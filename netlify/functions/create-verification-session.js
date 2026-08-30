@@ -52,7 +52,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const diditResponse = await fetch('https://verification.didit.me/v2/session/', {
+    const diditResponse = await fetch('https://verification.didit.me/v3/session/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
