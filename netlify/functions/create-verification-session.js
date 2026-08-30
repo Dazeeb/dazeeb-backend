@@ -5,7 +5,7 @@
 //
 // Confirmed against Didit's official docs (docs.didit.me/reference/api-authentication,
 // docs.didit.me/reference/create-session-verification-sessions):
-//   Endpoint: POST https://verification.didit.me/v2/session/
+//   Endpoint: POST {DIDIT_API_BASE}/v3/session/
 //   Auth header: x-api-key
 //   Body: { workflow_id, vendor_data, callback }
 //   Response includes: session_id, url
@@ -52,7 +52,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const diditResponse = await fetch('https://verification.didit.me/v3/session/', {
+    const apiBase = process.env.DIDIT_API_BASE;
+    const diditResponse = await fetch(`${apiBase}/v3/session/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
