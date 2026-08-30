@@ -19,7 +19,7 @@
 //
 // Required environment variables (set in Netlify dashboard, never committed):
 //   DIDIT_API_KEY       - your Didit business API key (Dazeeb-Production key)
-//   DIDIT_WORKFLOW_ID    - Free KYC = 71fecf71-1781-4a68-9a2e-a22f398f5eca
+//   DIDIT_WORKFLOW_ID    - Free KYC = <your-workflow-id>
 //   APP_URL              - your deployed site's base URL, used to build the callback
 //
 // This function does NOT store anything itself. Wire persistence into
