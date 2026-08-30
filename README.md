@@ -16,8 +16,8 @@ using Didit's "Free KYC" workflow.
 ## Confirmed so far
 
 - Didit workflow in use: **Free KYC**
-  (`71fecf71-1781-4a68-9a2e-a22f398f5eca`)
-- A test verification (Elijah Elvis Kazibwe, Identity Card, UGA) has
+  (`your-workflow-id`)
+- A test verification (test user, identity card, UGA) has
   already been approved via the Didit console directly — confirms the
   workflow itself works.
 
