@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dazeeb Verification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#05070C;
+    --panel:#11141C;
+    --gold:#E3A23B;
+    --gold-bright:#FFCE6B;
+    --blue:#2FA8FF;
+    --ink:#F3EFE4;
+    --ink-dim:#9C9890;
+    --line:#20242F;
+    --green:#5FAE7A;
+    --red:#D9695F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:#000;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px 12px;
+  }
+  .frame{
+    width:100%;
+    max-width:420px;
+    background:var(--black);
+    border-radius:28px;
+    border:1px solid #2a2a2e;
+    overflow:hidden;
+    position:relative;
+    min-height:640px;
+    padding:44px 26px 32px;
+  }
+  .circuit{
+    position:absolute;
+    inset:0;
+    opacity:.05;
+    pointer-events:none;
+    background-image:
+      linear-gradient(var(--blue) 1px, transparent 1px),
+      linear-gradient(90deg, var(--blue) 1px, transparent 1px);
+    background-size:38px 38px;
+  }
+
+  /* Loading state */
+  #loading{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:500px;
+    position:relative;
+    z-index:1;
+  }
+  .spinner{
+    width:40px; height:40px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    border-top-color:var(--gold-bright);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loading p{ margin-top:16px; color:var(--ink-dim); font-size:13px; }
+
+  /* Error state */
+  #error-state{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding-top:80px;
+    position:relative;
+    z-index:1;
+  }
+  .error-ring{
+    width:72px; height:72px;
+    border-radius:50%;
+    border:1.5px solid var(--red);
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(217,105,95,.08);
+  }
+  .error-ring svg{ width:28px; height:28px; }
+  #error-title{
+    font-family:'Fraunces',serif;
+    font-size:22px;
+    font-weight:500;
+    margin-top:20px;
+  }
+  #error-message{
+    margin-top:8px;
+    font-size:13.5px;
+    color:var(--ink-dim);
+    max-width:260px;
+    line-height:1.5;
+  }
+
+  /* Result state */
+  #result{
+    display:none;
+    position:relative;
+    z-index:1;
+  }
+  .r-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .r-brand{ display:flex; align-items:center; gap:8px; }
+  .r-brand .mark{ width:24px; height:24px; }
+  .r-brand .mark img{ width:100%; height:100%; }
+  .r-brand span{ font-size:12px; letter-spacing:.04em; color:var(--ink-dim); }
+  .countdown{
+    font-size:11.5px;
+    color:var(--gold-bright);
+    background:rgba(212,169,74,.1);
+    border:1px solid rgba(212,169,74,.3);
+    padding:5px 10px;
+    border-radius:100px;
+  }
+
+  .r-seal{
+    margin-top:52px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .seal-ring{
+    width:104px; height:104px;
+    border-radius:50%;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .seal-ring img{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; }
+  .seal-ring .check{
+    position:relative; z-index:1;
+    width:34px; height:34px;
+    background:var(--black);
+    border:2px solid var(--gold-bright);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .seal-ring .check svg{ width:16px; height:16px; }
+
+  .r-status{
+    font-family:'Fraunces',serif;
+    font-size:26px;
+    font-weight:500;
+    margin-top:20px;
+    color:var(--ink);
+  }
+  .r-status .accent{ color:var(--gold-bright); font-style:italic; }
+  .r-name{ margin-top:6px; font-size:14.5px; color:var(--ink-dim); }
+  .r-name b{ color:var(--ink); font-weight:600; }
+
+  .r-checks{
+    margin-top:30px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .check-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:11px;
+    font-size:13px;
+  }
+  .check-row .label{ color:var(--ink-dim); }
+  .check-row .val{
+    display:flex; align-items:center; gap:6px;
+    color:var(--green);
+    font-weight:600;
+  }
+  .check-row .val svg{ width:13px; height:13px; }
+
+  .single-use-note{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--ink-dim);
+    margin-top:16px;
+  }
+
+  .r-growth{
+    margin-top:24px;
+    padding:16px;
+    border-radius:12px;
+    background:rgba(62,123,250,.06);
+    border:1px solid rgba(62,123,250,.18);
+  }
+  .r-growth p{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; }
+  .r-growth a{
+    display:inline-block;
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--blue);
+    font-weight:600;
+    text-decoration:none;
+  }
+</style>
+</head>
+<body>
+
+  <div class="frame">
+    <div class="circuit"></div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Loading verification…</p>
+    </div>
+
+    <div id="error-state">
+      <div class="error-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#D9695F" stroke-width="2"><path d="M12 8v5M12 16h.01M12 3l9 16H3z"/></svg>
+      </div>
+      <div id="error-title">Link unavailable</div>
+      <div id="error-message"></div>
+    </div>
+
+    <div id="result">
+      <div class="r-top">
+        <div class="r-brand">
+          <div class="mark"><img src="/dzb-logo.png" alt="Dazeeb"></div>
+          <span>DAZEEB</span>
+        </div>
+        <div class="countdown" id="countdown">single use</div>
+      </div>
+
+      <div class="r-seal">
+        <div class="seal-ring">
+          <img src="/dzb-logo.png" alt="Dazeeb">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#F0C868" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+        </div>
+        <div class="r-status">Identity <span class="accent">verified</span></div>
+        <div class="r-name">Checked for <b id="result-name"></b></div>
+      </div>
+
+      <div class="r-checks" id="checks-list"></div>
+
+      <p class="single-use-note">This link is single-use. It cannot be reopened once viewed.</p>
+
+      <div class="r-growth">
+        <p>You trusted this because it came from Dazeeb. Get your own proof ready for the next person who asks.</p>
+        <a href="#">Get your own verification →</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const path = window.location.pathname;
+  const match = path.match(/\/verify\/([^/]+)/);
+  const token = match ? match[1] : null;
+
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error-state');
+  const resultEl = document.getElementById('result');
+  const errorTitle = document.getElementById('error-title');
+  const errorMessage = document.getElementById('error-message');
+
+  function showError(title, message) {
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'flex';
+    errorTitle.textContent = title;
+    errorMessage.textContent = message;
+  }
+
+  function checkRow(label, ok, text) {
+    return (
+      '<div class="check-row"><span class="label">' + label + '</span>' +
+      '<span class="val">' +
+      (ok
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="#5FAE7A" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="#D9695F" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg>') +
+      text + '</span></div>'
+    );
+  }
+
+  if (!token) {
+    showError('Link unavailable', 'This verification link is missing or malformed.');
+    return;
+  }
+
+  fetch('/.netlify/functions/get-verification?token=' + encodeURIComponent(token))
+    .then(function (res) {
+      if (res.status === 410) {
+        return res.text().then(function (body) {
+          const isUsed = /already been used/i.test(body);
+          throw new Error(isUsed
+            ? 'ALREADY_USED'
+            : 'EXPIRED');
+        });
+      }
+      if (res.status === 404) {
+        throw new Error('NOT_FOUND');
+      }
+      if (!res.ok) {
+        throw new Error('SERVER_ERROR');
+      }
+      return res.json();
+    })
+    .then(function (data) {
+      loadingEl.style.display = 'none';
+      resultEl.style.display = 'block';
+
+      document.getElementById('result-name').textContent =
+        (data.first_name || '') + (data.last_name_initial ? ' ' + data.last_name_initial + '.' : '');
+
+      const checks = [
+        checkRow('Age 18+ confirmed', data.age_over_18 === true, data.age_over_18 ? 'Yes' : 'No'),
+        checkRow('Government ID check', data.id_verification_status === 'Approved', data.id_verification_status || 'Unknown'),
+        checkRow('Live face match', data.face_match_status === 'Approved', data.face_match_status || 'Unknown')
+      ].join('');
+      document.getElementById('checks-list').innerHTML = checks;
+    })
+    .catch(function (err) {
+      const msg = err && err.message;
+      if (msg === 'ALREADY_USED') {
+        showError('Already used', 'This link has already been opened once and cannot be viewed again. Ask the sender for a new link.');
+      } else if (msg === 'EXPIRED') {
+        showError('Link expired', 'This link has expired. Ask the sender for a new link.');
+      } else if (msg === 'NOT_FOUND') {
+        showError('Link not found', 'This verification link doesn\'t exist or was revoked.');
+      } else {
+        showError('Something went wrong', 'Please try again, or ask the sender for a new link.');
+      }
+    });
+})();
+</script>
+
+</body>
+</html>
