@@ -1,30 +1,23 @@
 // netlify/functions/share-link.js
 //
-// Mints a short-lived share link for an already-completed verification.
-// Used both for the initial share AND for "resend" — resend is just this
-// same operation again: a new token pointing at the same underlying
-// verification, no re-scan, no new Didit session.
+// Mints a single-use share link for an already-completed verification.
+// Each call creates ONE new token — the link it produces can be opened
+// successfully exactly once (get-verification.js enforces that) and
+// expires after a short window regardless.
 //
-// POST body: { session_id: string, expiry_minutes?: number (default 10) }
+// POST body: { session_id: string, expiry_minutes?: number (default 3) }
 // Response:  { token, url, expires_at }
-//
-// Known limitation (accepted for now, not solved here): the only
-// "credential" required to mint a link is knowing the session_id. There
-// is no account/login system yet to verify the caller is actually the
-// person who completed that verification. Revisit once DAZEEB has real
-// user accounts.
 
-const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const DEFAULT_EXPIRY_MINUTES = 10;
-const MIN_EXPIRY_MINUTES = 1;
-const MAX_EXPIRY_MINUTES = 24 * 60; // 1 day ceiling, sender can't set something absurd
+const RATE_LIMIT_WINDOW_MINUTES = 10;
+const RATE_LIMIT_MAX_MINTS = 5;
+const DEFAULT_EXPIRY_MINUTES = 3;
 
 function generateToken() {
-  // 16 random bytes, base64url-encoded -> 22 char URL-safe token
   return crypto.randomBytes(16).toString("base64url");
 }
 
@@ -41,73 +34,76 @@ exports.handler = async (event) => {
   let body;
   try {
     body = JSON.parse(event.body || "{}");
-  } catch {
-    return { statusCode: 400, body: "Invalid JSON" };
+  } catch (err) {
+    return { statusCode: 400, body: "Invalid JSON body" };
   }
 
-  const { session_id } = body;
-  if (!session_id) {
+  const sessionId = body.session_id;
+  if (!sessionId) {
     return { statusCode: 400, body: "Missing session_id" };
   }
 
-  let expiryMinutes = Number(body.expiry_minutes) || DEFAULT_EXPIRY_MINUTES;
-  expiryMinutes = Math.min(Math.max(expiryMinutes, MIN_EXPIRY_MINUTES), MAX_EXPIRY_MINUTES);
+  const expiryMinutes = Number.isFinite(body.expiry_minutes) && body.expiry_minutes > 0
+    ? body.expiry_minutes
+    : DEFAULT_EXPIRY_MINUTES;
 
-  const { data: verification, error: lookupError } = await supabase
+  // Confirm the verification actually exists before minting anything.
+  const { data: verification, error: verificationError } = await supabase
     .from("verifications")
-    .select("session_id, status")
-    .eq("session_id", session_id)
+    .select("session_id")
+    .eq("session_id", sessionId)
     .maybeSingle();
 
-  if (lookupError) {
-    console.error("Failed to look up verification", lookupError);
+  if (verificationError) {
+    console.error("Failed to look up verification", verificationError);
     return { statusCode: 500, body: "Storage error" };
   }
 
   if (!verification) {
-    return { statusCode: 404, body: "No verification found for that session_id" };
+    return { statusCode: 404, body: "Verification not found" };
   }
 
-  // Rate limit: cap link-mints per session_id to blunt abuse of a leaked
-  // session_id, since there's no account system yet to gate this properly.
-  const RATE_LIMIT_WINDOW_MINUTES = 10;
-  const RATE_LIMIT_MAX = 5;
+  // Rate limit: cap how many links can be minted per session_id in a window,
+  // to stop someone generating unlimited fresh links to route around the
+  // single-use rule.
   const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-
-  const { count: recentCount, error: rateError } = await supabase
+  const { count, error: countError } = await supabase
     .from("share_links")
     .select("token", { count: "exact", head: true })
-    .eq("session_id", session_id)
+    .eq("session_id", sessionId)
     .gte("created_at", windowStart);
 
-  if (rateError) {
-    console.error("Failed to check rate limit", rateError);
+  if (countError) {
+    console.error("Failed to check rate limit", countError);
     return { statusCode: 500, body: "Storage error" };
   }
 
-  if (recentCount !== null && recentCount >= RATE_LIMIT_MAX) {
-    return { statusCode: 429, body: "Too many link requests — try again shortly" };
+  if ((count || 0) >= RATE_LIMIT_MAX_MINTS) {
+    return { statusCode: 429, body: "Too many links generated for this verification recently" };
   }
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000).toISOString();
 
-  const { error: insertError } = await supabase.from("share_links").insert({
-    token,
-    session_id,
-    expires_at: expiresAt,
-  });
+  const { error: insertError } = await supabase
+    .from("share_links")
+    .insert({
+      token,
+      session_id: sessionId,
+      expires_at: expiresAt,
+      revoked: false,
+    });
 
   if (insertError) {
     console.error("Failed to create share link", insertError);
     return { statusCode: 500, body: "Storage error" };
   }
 
-  const baseUrl = process.env.APP_URL || "https://dazeeb.com";
-  const url = `${baseUrl.replace(/\/$/, "")}/verify/${token}`;
+  const url = `https://dazeeb-backend.netlify.app/verify/${token}`;
 
   return {
     statusCode: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     body: JSON.stringify({ token, url, expires_at: expiresAt }),
   };
 };
